@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>موقع أفلام ومسلسلات</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #121212;
+            color: #fff;
+            text-align: center;
+        }
+        header {
+            background-color: #1f1f1f;
+            padding: 20px;
+        }
+        header h1 {
+            margin: 0;
+        }
+        nav button {
+            margin: 5px;
+            padding: 10px 20px;
+            background-color: #391789;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        nav button:hover {
+            background-color: #5c27d6;
+        }
+        #content {
+            padding: 20px;
+        }
+        .item {
+            margin: 10px 0;
+            padding: 10px;
+            background-color: #2a2a2a;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>مشاهدة أفلام ومسلسلات</h1>
+        <nav>
+            <button onclick="loadMovies()">أفلام</button>
+            <button onclick="loadSeries()">مسلسلات</button>
+            <button onclick="loadLive()">بث مباشر</button>
+        </nav>
+    </header>
+    <main id="content">
+        <p>اختر قسمًا لعرض المحتوى.</p>
+    </main>
+    <script>
+        const API_URL = "http://ktm42.xyz:2052";
+        const USERNAME = "black142320"; // اسم المستخدم الخاص بك
+        const PASSWORD = "254125412"; // كلمة المرور الخاصة بك
+
+        async function fetchData(action, categoryId = null) {
+            let url = `${API_URL}?username=${USERNAME}&password=${PASSWORD}&action=${action}`;
+            if (categoryId) url += `&category_id=${categoryId}`;
+            try {
+                const response = await fetch(url);
+                return await response.json();
+            } catch (error) {
+                console.error("خطأ أثناء جلب البيانات:", error);
+                return [];
+            }
+        }
+
+        function displayContent(title, items, type = "vod") {
+            const content = document.getElementById("content");
+            content.innerHTML = `<h2>${title}</h2>`;
+            if (!items || items.length === 0) {
+                content.innerHTML += "<p>لا توجد بيانات لعرضها.</p>";
+                return;
+            }
+            items.forEach(item => {
+                const itemDiv = document.createElement("div");
+                itemDiv.classList.add("item");
+                itemDiv.innerHTML = `
+                    <p><strong>${type === "live" ? item.name : item.stream_display_name}</strong></p>
+                    ${item.stream_icon ? `<img src="${item.stream_icon}" alt="${item.name}" style="width: 100px; height: auto;">` : ""}
+                    <button onclick="playStream('${item.stream_id}', '${type}')">مشاهدة</button>
+                `;
+                content.appendChild(itemDiv);
+            });
+        }
+
+        async function loadMovies() {
+            const categories = await fetchData("get_vod_categories");
+            if (categories.length > 0) {
+                const categoryId = categories[0].category_id; // اختيار أول فئة
+                const movies = await fetchData("get_vod_streams", categoryId);
+                displayContent("الأفلام", movies, "vod");
+            }
+        }
+
+        async function loadSeries() {
+            const categories = await fetchData("get_series_categories");
+            if (categories.length > 0) {
+                const categoryId = categories[0].category_id; // اختيار أول فئة
+                const series = await fetchData("get_series", categoryId);
+                displayContent("المسلسلات", series, "series");
+            }
+        }
+
+        async function loadLive() {
+            const liveStreams = await fetchData("get_live_streams");
+            displayContent("القنوات المباشرة", liveStreams, "live");
+        }
+
+        function playStream(streamId, type) {
+            const streamUrl = `${API_URL}/stream/${USERNAME}/${PASSWORD}/${streamId}.${type === "vod" ? "mp4" : "m3u8"}`;
+            const content = document.getElementById("content");
+            content.innerHTML = `
+                <video controls autoplay style="width: 100%; max-width: 600px;">
+                    <source src="${streamUrl}" type="${type === "vod" ? "video/mp4" : "application/x-mpegURL"}">
+                    المتصفح لا يدعم تشغيل الفيديو.
+                </video>
+                <button onclick="history.back()">عودة</button>
+            `;
+        }
+    </script>
+</body>
+</html>
